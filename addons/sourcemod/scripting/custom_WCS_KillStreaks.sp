@@ -46,8 +46,8 @@ public void OnPluginStart()
 	cvar_KillStreakMaximumExperience = CreateConVar("Mani_KillStreakMaximumExperience", "125", "The maximum amount of experience a bounty can ever reach, a bounty cannot exceed this value - [Default = 125 | Disable = 0] ");
 
 	// Cookie Stuff
-	cookie_killstreak_announcemessage = RegClientCookie("Kill Streak Messages On/Off 1", "killst1337", CookieAccess_Private);
-	SetCookieMenuItem(CookieMenuHandler_killstreak_announcemessage, cookie_killstreak_announcemessage, "Kill Streak Messages");
+	cookie_killstreak_announcemessage = RegClientCookie("KS Messages On/Off 1", "ksmsg1337", CookieAccess_Private);
+	SetCookieMenuItem(CookieMenuHandler_killstreak_announcemessage, cookie_killstreak_announcemessage, "KS Messages");
 
 	// Automatically generates a config file that contains our variables
 	AutoExecConfig(true, "custom_WCS_KillStreaks");
