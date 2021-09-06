@@ -77,64 +77,69 @@ public void Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcas
 		// If the attacker is dead when he kills someone e.g. with a molotov then this should not count towards his streak
 		if(IsPlayerAlive(attacker))
 		{
-			// Adds a kill to the killstreak of the player that killed the opponent
-			KillStreak[attacker] += 1;
-			
-			// Obtains the value of our attackers kill streak and store the value inside of KillStreakAttackerCheck
-			int KillStreakAttackerCheck = KillStreak[attacker];
-
-			// Creates an integer variable matching our cvar_RequiredKillsForStreak convar's value
-			int MinimumKillsForKillStreak = GetConVarInt(cvar_RequiredKillsForStreak);
-
-			// If the attacker has killed more than 3 people in a row without dying or the map changing then execute this section
-			if(KillStreakAttackerCheck >= MinimumKillsForKillStreak)
+			// If the attacker is not the same person as the victim, then execute this section
+			if(attacker != client)
 			{
-				// Creates an integer variable matching our cvar_KillStreakBaseExperience convar's value
-				int KillStreakBaseExperience = GetConVarInt(cvar_KillStreakBaseExperience);
-
-				// Creates an integer variable matching our cvar_KillStreakBonusExperience convar's value
-				int KillStreakBonusExperience = GetConVarInt(cvar_KillStreakBonusExperience);
-
-				// Creates an integer variable matching our cvar_KillStreakMaximumExperience convar's value
-				int KillStreakMaximumExperience = GetConVarInt(cvar_KillStreakMaximumExperience);
-
-				// Finds out how many additional kills the player has acquired
-				int KillDifference = KillStreakAttackerCheck - MinimumKillsForKillStreak;
+				// Adds a kill to the killstreak of the player that killed the opponent
+				KillStreak[attacker] += 1;
 				
-				// Multiplies the bonus experience value by the amount of additional kills beyond the minimum amount of kills
-				int KillStreakTotalExperience = KillStreakBaseExperience + (KillStreakBonusExperience * KillDifference);
+				// Obtains the value of our attackers kill streak and store the value inside of KillStreakAttackerCheck
+				int KillStreakAttackerCheck = KillStreak[attacker];
 
-				// If the maximum amount of experience is not set to 0 then execute this section
-				if (KillStreakMaximumExperience != 0)
+				// Creates an integer variable matching our cvar_RequiredKillsForStreak convar's value
+				int MinimumKillsForKillStreak = GetConVarInt(cvar_RequiredKillsForStreak);
+
+				// If the attacker has killed more than 3 people in a row without dying or the map changing then execute this section
+				if(KillStreakAttackerCheck >= MinimumKillsForKillStreak)
 				{
-					// If the total experience bounty exceeds the maximum amount of experience a player's bounty is allowed to become, then execute this section
-					if(KillStreakTotalExperience > KillStreakMaximumExperience)
+					CPrintToChat(attacker, "Killed Someone 5");
+					// Creates an integer variable matching our cvar_KillStreakBaseExperience convar's value
+					int KillStreakBaseExperience = GetConVarInt(cvar_KillStreakBaseExperience);
+
+					// Creates an integer variable matching our cvar_KillStreakBonusExperience convar's value
+					int KillStreakBonusExperience = GetConVarInt(cvar_KillStreakBonusExperience);
+
+					// Creates an integer variable matching our cvar_KillStreakMaximumExperience convar's value
+					int KillStreakMaximumExperience = GetConVarInt(cvar_KillStreakMaximumExperience);
+
+					// Finds out how many additional kills the player has acquired
+					int KillDifference = KillStreakAttackerCheck - MinimumKillsForKillStreak;
+					
+					// Multiplies the bonus experience value by the amount of additional kills beyond the minimum amount of kills
+					int KillStreakTotalExperience = KillStreakBaseExperience + (KillStreakBonusExperience * KillDifference);
+
+					// If the maximum amount of experience is not set to 0 then execute this section
+					if (KillStreakMaximumExperience != 0)
 					{
-						// Changes the total experience to the maximum experience allowed to be acquired from a bounty
-						KillStreakTotalExperience = KillStreakMaximumExperience;
+						// If the total experience bounty exceeds the maximum amount of experience a player's bounty is allowed to become, then execute this section
+						if(KillStreakTotalExperience > KillStreakMaximumExperience)
+						{
+							// Changes the total experience to the maximum experience allowed to be acquired from a bounty
+							KillStreakTotalExperience = KillStreakMaximumExperience;
+						}
 					}
-				}
 
-				// We create a variable named attackerid which we need as Source-Python commands uses userid's instead of indexes
-				int attackerid = GetEventInt(event, "attacker");
+					// We create a variable named attackerid which we need as Source-Python commands uses userid's instead of indexes
+					int attackerid = GetEventInt(event, "attacker");
 
-				// Creates a variable named ServerCommandMessage which we'll store our message data within
-				char ServerCommandMessage[128];
+					// Creates a variable named ServerCommandMessage which we'll store our message data within
+					char ServerCommandMessage[128];
 
-				// Formats a message and store it within our ServerCommandMessage variable
-				FormatEx(ServerCommandMessage, sizeof(ServerCommandMessage), "wcs_givexp %i %i", attackerid, KillStreakTotalExperience);
+					// Formats a message and store it within our ServerCommandMessage variable
+					FormatEx(ServerCommandMessage, sizeof(ServerCommandMessage), "wcs_givexp %i %i", attackerid, KillStreakTotalExperience);
 
-				// Executes our GiveLevel server command on the player, to award them with levels
-				ServerCommand(ServerCommandMessage);
+					// Executes our GiveLevel server command on the player, to award them with levels
+					ServerCommand(ServerCommandMessage);
 
-				// If the player is not a bot then execute this section
-				if (!IsFakeClient(attacker))
-				{
-					// If the player has the bounty announcement messages enabled then execute this section
-					if (option_killstreak_announcemessage[attacker])
+					// If the player is not a bot then execute this section
+					if (!IsFakeClient(attacker))
 					{
-						// Prints a message to the chat announcing the bounty
-						CPrintToChat(attacker, "%t", "Killstreak Experience Message", KillStreakTotalExperience);
+						// If the player has the bounty announcement messages enabled then execute this section
+						if (option_killstreak_announcemessage[attacker])
+						{
+							// Prints a message to the chat announcing the bounty
+							CPrintToChat(attacker, "%t", "Killstreak Experience Message", KillStreakTotalExperience);
+						}
 					}
 				}
 			}
