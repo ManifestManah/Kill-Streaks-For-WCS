@@ -92,7 +92,6 @@ public void Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcas
 				// If the attacker has killed more than 3 people in a row without dying or the map changing then execute this section
 				if(KillStreakAttackerCheck >= MinimumKillsForKillStreak)
 				{
-					CPrintToChat(attacker, "Killed Someone 5");
 					// Creates an integer variable matching our cvar_KillStreakBaseExperience convar's value
 					int KillStreakBaseExperience = GetConVarInt(cvar_KillStreakBaseExperience);
 
