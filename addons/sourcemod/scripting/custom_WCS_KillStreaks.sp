@@ -19,18 +19,30 @@ public Plugin myinfo =
 };
 
 
-// Config Convars
+
+//////////////////////////
+// - Global Variables - //
+//////////////////////////
+
+
+// Global Convars
 Handle cvar_RequiredKillsForStreak;
 Handle cvar_KillStreakBaseExperience;
 Handle cvar_KillStreakBonusExperience;
 Handle cvar_KillStreakMaximumExperience;
 
-// Integers
-int KillStreak[MAXPLAYERS + 1] = {1};
+// Global Integers
+int KillStreak[MAXPLAYERS + 1] = {0, ...};
 
-// Cookie Variables
+// Global Cookie Variables
 bool option_killstreak_announcemessage[MAXPLAYERS + 1] = {true,...};
 Handle cookie_killstreak_announcemessage = INVALID_HANDLE;
+
+
+
+//////////////////////////
+// - Forwards & Hooks - //
+//////////////////////////
 
 
 // This happens when the plugin is loaded
@@ -59,9 +71,39 @@ public void OnPluginStart()
 
 public void OnClientDisconnect(int client)
 {
+	// If the client meets our validation criteria then execute this section
+	if(!IsValidClient(client))
+	{
+		return;
+	}
+
 	// Changes the player's kill streak to 0
 	KillStreak[client] = 0;
 }
+
+
+public void OnClientCookiesCached(int client)
+{
+	// If the client meets our validation criteria then execute this section
+	if(!IsValidClient(client))
+	{
+		return;
+	}
+
+	// If the player is a bot then execute this section
+	if(IsFakeClient(attacker))
+	{
+		return;
+	}
+
+	option_killstreak_announcemessage[client] = GetCookiekillstreak_announcemessage(client);
+}
+
+
+
+////////////////
+// - Events - //
+////////////////
 
 
 // This happens every time a player spawns
@@ -69,85 +111,137 @@ public void Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcas
 {
 	// Obtains the victim and attacker's userids and store them within the respective variables: client and attacker
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+
+	// If the client meets our validation criteria then execute this section
+	if(!IsValidClient(client))
+	{
+		return;
+	}
+
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 
-	// If Both the client and the attacker meets our criteria of client validation then execute this section
-	if(IsValidClient(client) && IsValidClient(attacker))
+	// If the attacker meets our validation criteria then execute this section
+	if(!IsValidClient(attacker))
 	{
-		// If the attacker is dead when he kills someone e.g. with a molotov then this should not count towards his streak
-		if(IsPlayerAlive(attacker))
+		return;
+	}
+
+	// If the attacker is not alive then execute this section
+	if(!IsPlayerAlive(attacker))
+	{
+		return;
+	}
+
+	// If the attacker is the same person as the victim then execute this section
+	if(attacker == client)
+	{
+		return;
+	}
+
+	// Changes the kill streak of the player that died to 0 
+	KillStreak[client] = 0;
+
+	// Adds a kill to the killstreak of the player that killed the opponent
+	KillStreak[attacker] += 1;
+
+	// If the attacker has killed less than (Default: 3) enemies without dying, then execute this section
+	if(KillStreak[attacker] < GetConVarInt(cvar_RequiredKillsForStreak))
+	{
+		return;
+	}
+
+	// Multiplies the bonus experience value by the amount of additional kills beyond the minimum amount of kills
+	int KillStreakTotalExperience = GetConVarInt(cvar_KillStreakBaseExperience) + (GetConVarInt(cvar_KillStreakBonusExperience) * (KillStreak[attacker] - GetConVarInt(cvar_RequiredKillsForStreak)));
+
+	// If the maximum amount of experience is not set to 0 then execute this section
+	if(GetConVarInt(cvar_KillStreakMaximumExperience) != 0)
+	{
+		// If the total experience bounty exceeds the maximum amount of experience a player's bounty is allowed to be, then execute this section
+		if(KillStreakTotalExperience > GetConVarInt(cvar_KillStreakMaximumExperience))
 		{
-			// If the attacker is not the same person as the victim, then execute this section
-			if(attacker != client)
-			{
-				// Adds a kill to the killstreak of the player that killed the opponent
-				KillStreak[attacker] += 1;
-				
-				// Obtains the value of our attackers kill streak and store the value inside of KillStreakAttackerCheck
-				int KillStreakAttackerCheck = KillStreak[attacker];
+			// Changes the total experience to the maximum experience allowed to be acquired from a bounty
+			KillStreakTotalExperience = GetConVarInt(cvar_KillStreakMaximumExperience);
+		}
+	}
 
-				// Creates an integer variable matching our cvar_RequiredKillsForStreak convar's value
-				int MinimumKillsForKillStreak = GetConVarInt(cvar_RequiredKillsForStreak);
+	// Creates a variable named ServerCommandMessage which we'll store our message data within
+	char ServerCommandMessage[128];
 
-				// If the attacker has killed more than 3 people in a row without dying or the map changing then execute this section
-				if(KillStreakAttackerCheck >= MinimumKillsForKillStreak)
-				{
-					// Creates an integer variable matching our cvar_KillStreakBaseExperience convar's value
-					int KillStreakBaseExperience = GetConVarInt(cvar_KillStreakBaseExperience);
+	// Formats a message and store it within our ServerCommandMessage variable
+	FormatEx(ServerCommandMessage, sizeof(ServerCommandMessage), "wcs_givexp %i %i", GetEventInt(event, "attacker"), KillStreakTotalExperience);
 
-					// Creates an integer variable matching our cvar_KillStreakBonusExperience convar's value
-					int KillStreakBonusExperience = GetConVarInt(cvar_KillStreakBonusExperience);
+	// Executes our GiveLevel server command on the player, to award them with experience
+	ServerCommand(ServerCommandMessage);
 
-					// Creates an integer variable matching our cvar_KillStreakMaximumExperience convar's value
-					int KillStreakMaximumExperience = GetConVarInt(cvar_KillStreakMaximumExperience);
+	// If the player is a bot then execute this section
+	if(IsFakeClient(attacker))
+	{
+		return;
+	}
 
-					// Finds out how many additional kills the player has acquired
-					int KillDifference = KillStreakAttackerCheck - MinimumKillsForKillStreak;
-					
-					// Multiplies the bonus experience value by the amount of additional kills beyond the minimum amount of kills
-					int KillStreakTotalExperience = KillStreakBaseExperience + (KillStreakBonusExperience * KillDifference);
+	// If the player has the bounty announcement messages disabled then execute this section
+	if(!option_killstreak_announcemessage[attacker])
+	{
+		return;
+	}
 
-					// If the maximum amount of experience is not set to 0 then execute this section
-					if (KillStreakMaximumExperience != 0)
-					{
-						// If the total experience bounty exceeds the maximum amount of experience a player's bounty is allowed to become, then execute this section
-						if(KillStreakTotalExperience > KillStreakMaximumExperience)
-						{
-							// Changes the total experience to the maximum experience allowed to be acquired from a bounty
-							KillStreakTotalExperience = KillStreakMaximumExperience;
-						}
-					}
+	// Prints a message to the chat announcing the bounty
+	CPrintToChat(attacker, "%t", "Killstreak Experience Message", KillStreakTotalExperience);
+}
 
-					// We create a variable named attackerid which we need as Source-Python commands uses userid's instead of indexes
-					int attackerid = GetEventInt(event, "attacker");
 
-					// Creates a variable named ServerCommandMessage which we'll store our message data within
-					char ServerCommandMessage[128];
 
-					// Formats a message and store it within our ServerCommandMessage variable
-					FormatEx(ServerCommandMessage, sizeof(ServerCommandMessage), "wcs_givexp %i %i", attackerid, KillStreakTotalExperience);
+///////////////////////////
+// - Regular Functions - //
+///////////////////////////
 
-					// Executes our GiveLevel server command on the player, to award them with levels
-					ServerCommand(ServerCommandMessage);
 
-					// If the player is not a bot then execute this section
-					if (!IsFakeClient(attacker))
-					{
-						// If the player has the bounty announcement messages enabled then execute this section
-						if (option_killstreak_announcemessage[attacker])
-						{
-							// Prints a message to the chat announcing the bounty
-							CPrintToChat(attacker, "%t", "Killstreak Experience Message", KillStreakTotalExperience);
-						}
-					}
-				}
-			}
+public void CookieMenuHandler_killstreak_announcemessage(int client, CookieMenuAction action, any killstreak_announcemessage, char[] buffer, int maxlen)
+{	
+	if(action == CookieMenuAction_DisplayOption)
+	{
+		char status[16];
+
+		if (option_killstreak_announcemessage[client])
+		{
+			Format(status, sizeof(status), "%s", "[ON]", client);
 		}
 
-		// Changes the kill streak of the player that died to 0 
-		KillStreak[client] = 0;
+		else
+		{
+			Format(status, sizeof(status), "%s", "[OFF]", client);
+		}
+		
+		Format(buffer, maxlen, "EXP Kill Streak Messages: %s", status);
+	}
+
+	else
+	{
+		option_killstreak_announcemessage[client] = !option_killstreak_announcemessage[client];
+		
+		if (option_killstreak_announcemessage[client])
+		{
+			SetClientCookie(client, cookie_killstreak_announcemessage, "On");
+
+			CPrintToChat(client, "%t", "Kill Streak Messages Enabled");
+		}
+	
+		else
+		{
+			SetClientCookie(client, cookie_killstreak_announcemessage, "Off");
+
+			CPrintToChat(client, "%t", "Kill Streak Messages Disabled");
+		}
+		
+		ShowCookieMenu(client);
 	}
 }
+
+
+
+////////////////////////////////
+// - Return Based Functions - //
+////////////////////////////////
 
 
 // We call upon this true and false statement whenever we wish to validate our player
@@ -162,13 +256,6 @@ bool IsValidClient(int client)
 }
 
 
-// Cookie stuff below
-public void OnClientCookiesCached(int client)
-{
-	option_killstreak_announcemessage[client] = GetCookiekillstreak_announcemessage(client);
-}
-
-
 bool GetCookiekillstreak_announcemessage(int client)
 {
 	char buffer[10];
@@ -176,40 +263,4 @@ bool GetCookiekillstreak_announcemessage(int client)
 	GetClientCookie(client, cookie_killstreak_announcemessage, buffer, sizeof(buffer));
 	
 	return !StrEqual(buffer, "Off");
-}
-
-
-public void CookieMenuHandler_killstreak_announcemessage(int client, CookieMenuAction action, any killstreak_announcemessage, char[] buffer, int maxlen)
-{	
-	if (action == CookieMenuAction_DisplayOption)
-	{
-		char status[16];
-		if (option_killstreak_announcemessage[client])
-		{
-			Format(status, sizeof(status), "%s", "[ON]", client);
-		}
-		else
-		{
-			Format(status, sizeof(status), "%s", "[OFF]", client);
-		}
-		
-		Format(buffer, maxlen, "EXP Kill Streak Messages: %s", status);
-	}
-	else
-	{
-		option_killstreak_announcemessage[client] = !option_killstreak_announcemessage[client];
-		
-		if (option_killstreak_announcemessage[client])
-		{
-			SetClientCookie(client, cookie_killstreak_announcemessage, "On");
-			CPrintToChat(client, "%t", "Kill Streak Messages Enabled");
-		}
-		else
-		{
-			SetClientCookie(client, cookie_killstreak_announcemessage, "Off");
-			CPrintToChat(client, "%t", "Kill Streak Messages Disabled");
-		}
-		
-		ShowCookieMenu(client);
-	}
 }
