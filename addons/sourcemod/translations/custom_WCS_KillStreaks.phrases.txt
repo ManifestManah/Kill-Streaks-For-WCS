@@ -4,18 +4,21 @@
 	{
 		"#format"		"{1:i}"
 		"en"			"{green}[WCS] {default}You gained {lightgreen}{1} bonus XP{default} for being on a kill streak."
+		"ru"			"{green}[WCS] {default}Вы получили {lightgreen}{1} бонусного опыта{default} за серию убийств."
 		"da"			"{green}[WCS] {default}Du fik {lightgreen}{1} bonus XP{default} for at være på en kill streak."
 	}
 
 	"Kill Streak Messages Enabled"
 	{
 		"en"			"{green}[WCS] {default}The kill streak messages are now {lightgreen}turned on{default}."
+		"ru"			"{green}[WCS] {default}Сообщения о серии убийств теперь {lightgreen}включены{default}."
 		"da"			"{green}[WCS] {default}Kill streak beskederne blev {lightgreen}slået til{default}."
 	}
 
 	"Kill Streak Messages Disabled"
 	{
 		"en"			"{green}[WCS] {default}The kill streak messages are now {lightgreen}turned off{default}."
+		"ru"			"{green}[WCS] {default}Сообщения о серии убийств теперь {lightgreen}отключены{default}."
 		"da"			"{green}[WCS] {default}Kill streak beskederne blev {lightgreen}slået fra{default}."
 	}
 }
